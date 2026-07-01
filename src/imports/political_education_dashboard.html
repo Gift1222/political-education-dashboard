@@ -1,0 +1,342 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0D0D0D}
+.dash{background:#0D0D0D;min-height:100vh;color:#fff;font-family:system-ui,-apple-system,sans-serif;padding:0 0 40px}
+.header{background:#0D0D0D;border-bottom:3px solid #CC0000;padding:18px 28px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:14px}
+.logo-box{width:44px;height:44px;background:#CC0000;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px}
+.org-name{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:2px;margin-bottom:2px}
+.dash-title{font-size:17px;font-weight:700;color:#fff;letter-spacing:.3px}
+.header-badge{background:#CC0000;color:#fff;font-size:11px;font-weight:600;padding:5px 12px;border-radius:2px;letter-spacing:1px;text-transform:uppercase}
+.content{padding:24px 28px}
+.section-label{font-size:10px;color:#CC0000;text-transform:uppercase;letter-spacing:3px;margin-bottom:14px;font-weight:600}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.kpi-card{background:#1A1A1A;border:1px solid #2A2A2A;border-top:3px solid #CC0000;padding:18px 20px;border-radius:2px}
+.kpi-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.kpi-value{font-size:34px;font-weight:900;color:#fff;line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:#CC0000;font-weight:600}
+.charts-row{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;margin-bottom:14px}
+.chart-card{background:#1A1A1A;border:1px solid #2A2A2A;padding:20px;border-radius:2px}
+.chart-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-title::before{content:'';display:block;width:3px;height:14px;background:#CC0000;border-radius:1px;flex-shrink:0}
+.charts-row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}
+.table-card{background:#1A1A1A;border:1px solid #2A2A2A;border-radius:2px;overflow:hidden}
+.table-header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2A2A2A}
+.table-title{font-size:13px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}
+.table-title::before{content:'';display:block;width:3px;height:14px;background:#CC0000;border-radius:1px}
+.search-box{background:#0D0D0D;border:1px solid #2A2A2A;color:#fff;padding:7px 14px;font-size:12px;border-radius:2px;width:200px;outline:none}
+.search-box:focus{border-color:#CC0000}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 14px;text-align:left;font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1px solid #2A2A2A;font-weight:600}
+td{padding:11px 14px;border-bottom:1px solid #1E1E1E;color:#ccc;vertical-align:middle}
+tr:hover td{background:#212121}
+.cert-link{color:#CC0000;text-decoration:none;font-weight:600;font-size:11px}
+.cert-link:hover{text-decoration:underline}
+.gender-legend{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.gender-row{display:flex;align-items:center;justify-content:space-between}
+.gender-dot{display:flex;align-items:center;gap:8px;font-size:12px;color:#ccc}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.gender-pct{font-size:14px;font-weight:700;color:#fff}
+.empty{padding:32px;text-align:center;color:#555;font-size:13px}
+.count-badge{background:#2A2A2A;color:#888;font-size:11px;padding:3px 10px;border-radius:10px}
+canvas{display:block}
+</style>
+
+<div class="dash">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-box">PE</div>
+      <div>
+        <div class="org-name">Training Management System</div>
+        <div class="dash-title">Political Education — Completion Dashboard</div>
+      </div>
+    </div>
+    <div class="header-badge">Live Tracking</div>
+  </div>
+
+  <div class="content">
+    <div class="section-label">Key Performance Indicators</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Completed</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-sub">participants</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Districts Reached</div>
+        <div class="kpi-value" id="kpi-districts">—</div>
+        <div class="kpi-sub">unique districts</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Largest Age Group</div>
+        <div class="kpi-value" id="kpi-age">—</div>
+        <div class="kpi-sub" id="kpi-age-sub">years old</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Gender Balance</div>
+        <div class="kpi-value" id="kpi-gender">—</div>
+        <div class="kpi-sub" id="kpi-gender-sub">female</div>
+      </div>
+    </div>
+
+    <div class="section-label">Trend Analysis</div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Completions Over Time</div>
+        <div style="position:relative;height:200px"><canvas id="trendChart" role="img" aria-label="Line chart showing participant completions per month"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Gender Distribution</div>
+        <div style="position:relative;height:140px"><canvas id="genderChart" role="img" aria-label="Pie chart showing gender breakdown"></canvas></div>
+        <div class="gender-legend" id="gender-legend"></div>
+      </div>
+    </div>
+
+    <div class="charts-row2">
+      <div class="chart-card">
+        <div class="chart-title">Age Range Distribution</div>
+        <div style="position:relative;height:200px"><canvas id="ageChart" role="img" aria-label="Bar chart showing age group distribution"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Completions by District</div>
+        <div style="position:relative;height:200px"><canvas id="districtChart" role="img" aria-label="Horizontal bar chart showing top districts"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-label">Participant Records</div>
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">All Completions <span class="count-badge" id="table-count">0</span></div>
+        <input class="search-box" id="search" type="text" placeholder="Search name, email, district...">
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>District</th>
+              <th>Gender</th>
+              <th>Age</th>
+              <th>Course</th>
+              <th>Completed</th>
+              <th>Certificate</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+        <div id="empty-state" class="empty" style="display:none">No participants match your search.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+// To connect real data, set these and change USE_SUPABASE to true
+const SUPABASE_URL = "https://mbolmejnvmygsudryydx.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_ANON_KEY_HERE";
+const USE_SUPABASE = false;
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SAMPLE = [
+  {name:"Chisomo Banda",email:"c.banda@gmail.com",district:"Lilongwe",age:29,gender:"Female",course_name:"Democratic Governance",completed_at:"2026-02-03",certificate_url:"#"},
+  {name:"Tawonga Phiri",email:"t.phiri@mail.mw",district:"Blantyre",age:34,gender:"Male",course_name:"Political Participation",completed_at:"2026-02-10",certificate_url:"#"},
+  {name:"Mphatso Mwale",email:"m.mwale@yahoo.com",district:"Mzimba",age:22,gender:"Male",course_name:"Civic Rights",completed_at:"2026-02-18",certificate_url:"#"},
+  {name:"Dalitso Chirwa",email:"d.chirwa@gmail.com",district:"Zomba",age:41,gender:"Male",course_name:"Electoral Processes",completed_at:"2026-02-25",certificate_url:"#"},
+  {name:"Takondwa Mkandawire",email:"t.mkand@mail.mw",district:"Lilongwe",age:26,gender:"Female",course_name:"Democratic Governance",completed_at:"2026-03-04",certificate_url:"#"},
+  {name:"Kondwani Tembo",email:"k.tembo@gmail.com",district:"Kasungu",age:38,gender:"Male",course_name:"Political Participation",completed_at:"2026-03-09",certificate_url:"#"},
+  {name:"Yankho Msowoya",email:"y.msowoya@mail.mw",district:"Mangochi",age:31,gender:"Female",course_name:"Civic Rights",completed_at:"2026-03-15",certificate_url:"#"},
+  {name:"Lonjezo Nkosi",email:"l.nkosi@yahoo.com",district:"Dedza",age:24,gender:"Male",course_name:"Electoral Processes",completed_at:"2026-03-20",certificate_url:"#"},
+  {name:"Vitumbiko Gondwe",email:"v.gondwe@gmail.com",district:"Lilongwe",age:45,gender:"Male",course_name:"Democratic Governance",completed_at:"2026-03-27",certificate_url:"#"},
+  {name:"Chimwemwe Kalua",email:"c.kalua@mail.mw",district:"Karonga",age:19,gender:"Female",course_name:"Political Participation",completed_at:"2026-04-02",certificate_url:"#"},
+  {name:"Mtisunge Dzoole",email:"m.dzoole@gmail.com",district:"Ntcheu",age:52,gender:"Male",course_name:"Civic Rights",completed_at:"2026-04-07",certificate_url:"#"},
+  {name:"Pemphero Mvula",email:"p.mvula@mail.mw",district:"Blantyre",age:28,gender:"Female",course_name:"Electoral Processes",completed_at:"2026-04-12",certificate_url:"#"},
+  {name:"Wezzie Ligomeka",email:"w.ligomeka@gmail.com",district:"Salima",age:33,gender:"Female",course_name:"Democratic Governance",completed_at:"2026-04-18",certificate_url:"#"},
+  {name:"Kondwani Ndalama",email:"k.ndalama@yahoo.com",district:"Mzimba",age:47,gender:"Male",course_name:"Political Participation",completed_at:"2026-04-22",certificate_url:"#"},
+  {name:"Bertha Phombeya",email:"b.phombeya@mail.mw",district:"Lilongwe",age:36,gender:"Female",course_name:"Civic Rights",completed_at:"2026-04-28",certificate_url:"#"},
+  {name:"Steward Chiume",email:"s.chiume@gmail.com",district:"Thyolo",age:23,gender:"Male",course_name:"Electoral Processes",completed_at:"2026-05-05",certificate_url:"#"},
+  {name:"Linly Kapalamula",email:"l.kapala@mail.mw",district:"Dowa",age:30,gender:"Female",course_name:"Democratic Governance",completed_at:"2026-05-10",certificate_url:"#"},
+  {name:"Aubrey Msukwa",email:"a.msukwa@gmail.com",district:"Blantyre",age:59,gender:"Male",course_name:"Political Participation",completed_at:"2026-05-15",certificate_url:"#"},
+  {name:"Grace Kamanga",email:"g.kamanga@yahoo.com",district:"Lilongwe",age:27,gender:"Female",course_name:"Civic Rights",completed_at:"2026-05-20",certificate_url:"#"},
+  {name:"Isaac Nyirenda",email:"i.nyirenda@mail.mw",district:"Rumphi",age:44,gender:"Male",course_name:"Electoral Processes",completed_at:"2026-05-25",certificate_url:"#"},
+  {name:"Saulos Chilima",email:"s.chilima@gmail.com",district:"Nkhotakota",age:21,gender:"Male",course_name:"Democratic Governance",completed_at:"2026-05-29",certificate_url:"#"},
+  {name:"Mercy Kachingwe",email:"m.kachi@mail.mw",district:"Mulanje",age:39,gender:"Female",course_name:"Political Participation",completed_at:"2026-06-03",certificate_url:"#"},
+  {name:"Hastings Mzumara",email:"h.mzumara@gmail.com",district:"Chitipa",age:55,gender:"Male",course_name:"Civic Rights",completed_at:"2026-06-08",certificate_url:"#"},
+  {name:"Doreen Kayuni",email:"d.kayuni@yahoo.com",district:"Zomba",age:32,gender:"Female",course_name:"Electoral Processes",completed_at:"2026-06-12",certificate_url:"#"},
+  {name:"Mavuto Sichinga",email:"m.sichi@mail.mw",district:"Lilongwe",age:48,gender:"Male",course_name:"Democratic Governance",completed_at:"2026-06-17",certificate_url:"#"},
+  {name:"Tamara Msiska",email:"t.msiska@gmail.com",district:"Mchinji",age:25,gender:"Female",course_name:"Political Participation",completed_at:"2026-06-20",certificate_url:"#"},
+  {name:"Francis Matemba",email:"f.matemba@mail.mw",district:"Balaka",age:37,gender:"Male",course_name:"Civic Rights",completed_at:"2026-06-24",certificate_url:"#"},
+  {name:"Patricia Lungu",email:"p.lungu@gmail.com",district:"Nsanje",age:43,gender:"Female",course_name:"Electoral Processes",completed_at:"2026-06-28",certificate_url:"#"}
+];
+
+let allData = [];
+let trendChartInst, genderChartInst, ageChartInst, districtChartInst;
+
+async function loadData() {
+  if (USE_SUPABASE) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/course_completions?select=*&order=completed_at.desc`, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+      allData = await res.json();
+    } catch(e) { allData = SAMPLE; }
+  } else {
+    allData = SAMPLE;
+  }
+  render(allData);
+}
+
+function computeKPIs(data) {
+  const total = data.length;
+  const districts = new Set(data.map(d => d.district)).size;
+  const ageBuckets = {"18-25":0,"26-35":0,"36-45":0,"46-55":0,"56+":0};
+  data.forEach(d => {
+    const a = d.age;
+    if(a<=25) ageBuckets["18-25"]++;
+    else if(a<=35) ageBuckets["26-35"]++;
+    else if(a<=45) ageBuckets["36-45"]++;
+    else if(a<=55) ageBuckets["46-55"]++;
+    else ageBuckets["56+"]++;
+  });
+  const topAge = Object.entries(ageBuckets).sort((a,b)=>b[1]-a[1])[0][0];
+  const femaleCount = data.filter(d=>d.gender==="Female").length;
+  const femalePct = total ? Math.round(femaleCount/total*100) : 0;
+  return {total, districts, topAge, femalePct};
+}
+
+function computeTrend(data) {
+  const monthly = {};
+  data.forEach(d => {
+    const m = d.completed_at.substring(0,7);
+    monthly[m] = (monthly[m]||0)+1;
+  });
+  return Object.entries(monthly).sort().map(([m, count]) => {
+    const [y, mo] = m.split('-');
+    const label = new Date(+y, +mo-1, 1).toLocaleString('en',{month:'short', year:'2-digit'});
+    return {label, count};
+  });
+}
+
+function computeAge(data) {
+  const buckets = [["18-25",0],["26-35",0],["36-45",0],["46-55",0],["56+",0]];
+  data.forEach(d => {
+    const a = d.age;
+    if(a<=25) buckets[0][1]++;
+    else if(a<=35) buckets[1][1]++;
+    else if(a<=45) buckets[2][1]++;
+    else if(a<=55) buckets[3][1]++;
+    else buckets[4][1]++;
+  });
+  return buckets;
+}
+
+function computeGender(data) {
+  const counts = {};
+  data.forEach(d => { counts[d.gender]=(counts[d.gender]||0)+1; });
+  return Object.entries(counts);
+}
+
+function computeDistricts(data) {
+  const counts = {};
+  data.forEach(d => { counts[d.district]=(counts[d.district]||0)+1; });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
+}
+
+function fmtDate(s) {
+  if(!s) return '—';
+  const d = new Date(s);
+  return d.toLocaleDateString('en',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function render(data) {
+  const {total, districts, topAge, femalePct} = computeKPIs(data);
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-districts').textContent = districts;
+  document.getElementById('kpi-age').textContent = topAge;
+  document.getElementById('kpi-gender').textContent = femalePct + '%';
+  document.getElementById('kpi-gender-sub').textContent = 'female participants';
+
+  const trend = computeTrend(data);
+  const ageBuckets = computeAge(data);
+  const genderData = computeGender(data);
+  const districtData = computeDistricts(data);
+
+  if(trendChartInst) trendChartInst.destroy();
+  trendChartInst = new Chart(document.getElementById('trendChart'), {
+    type:'line',
+    data:{
+      labels: trend.map(t=>t.label),
+      datasets:[{label:'Completions',data:trend.map(t=>t.count),borderColor:'#CC0000',backgroundColor:'rgba(204,0,0,0.08)',borderWidth:2.5,pointBackgroundColor:'#CC0000',pointRadius:5,pointHoverRadius:7,tension:0.3,fill:true}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1A1A1A',titleColor:'#fff',bodyColor:'#aaa',borderColor:'#CC0000',borderWidth:1}},scales:{x:{ticks:{color:'#666',font:{size:11}},grid:{color:'#1E1E1E'},border:{color:'#2A2A2A'}},y:{ticks:{color:'#666',font:{size:11},stepSize:1},grid:{color:'#1E1E1E'},border:{color:'#2A2A2A'}}}}
+  });
+
+  if(genderChartInst) genderChartInst.destroy();
+  const gColors = ['#CC0000','#ffffff','#888888','#ff6666'];
+  genderChartInst = new Chart(document.getElementById('genderChart'), {
+    type:'doughnut',
+    data:{labels:genderData.map(g=>g[0]),datasets:[{data:genderData.map(g=>g[1]),backgroundColor:gColors,borderColor:'#1A1A1A',borderWidth:3,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#1A1A1A',titleColor:'#fff',bodyColor:'#aaa',borderColor:'#2A2A2A',borderWidth:1}}}
+  });
+  const legend = document.getElementById('gender-legend');
+  legend.innerHTML = genderData.map((g,i)=>{
+    const pct = Math.round(g[1]/total*100);
+    return `<div class="gender-row"><span class="gender-dot"><span class="dot" style="background:${gColors[i]}"></span>${g[0]}</span><span class="gender-pct">${pct}%</span></div>`;
+  }).join('');
+
+  if(ageChartInst) ageChartInst.destroy();
+  ageChartInst = new Chart(document.getElementById('ageChart'), {
+    type:'bar',
+    data:{labels:ageBuckets.map(b=>b[0]),datasets:[{label:'Participants',data:ageBuckets.map(b=>b[1]),backgroundColor:ageBuckets.map((b,i)=>i===ageBuckets.reduce((mi,b2,bi,a)=>b2[1]>a[mi][1]?bi:mi,0)?'#CC0000':'#2A2A2A'),borderRadius:2,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1A1A1A',titleColor:'#fff',bodyColor:'#aaa',borderColor:'#CC0000',borderWidth:1}},scales:{x:{ticks:{color:'#666',font:{size:11}},grid:{color:'#1E1E1E'},border:{color:'#2A2A2A'}},y:{ticks:{color:'#666',font:{size:11},stepSize:1},grid:{color:'#1E1E1E'},border:{color:'#2A2A2A'}}}}
+  });
+
+  if(districtChartInst) districtChartInst.destroy();
+  districtChartInst = new Chart(document.getElementById('districtChart'), {
+    type:'bar',
+    data:{labels:districtData.map(d=>d[0]),datasets:[{label:'Participants',data:districtData.map(d=>d[1]),backgroundColor:'#CC0000',borderRadius:2,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1A1A1A',titleColor:'#fff',bodyColor:'#aaa',borderColor:'#CC0000',borderWidth:1}},scales:{x:{ticks:{color:'#666',font:{size:11},stepSize:1},grid:{color:'#1E1E1E'},border:{color:'#2A2A2A'}},y:{ticks:{color:'#888',font:{size:11}},grid:{display:false},border:{color:'#2A2A2A'}}}}
+  });
+
+  renderTable(data, '');
+}
+
+function renderTable(data, query) {
+  const tbody = document.getElementById('table-body');
+  const empty = document.getElementById('empty-state');
+  const countBadge = document.getElementById('table-count');
+  const q = query.toLowerCase();
+  const filtered = q ? data.filter(d =>
+    (d.name||'').toLowerCase().includes(q) ||
+    (d.email||'').toLowerCase().includes(q) ||
+    (d.district||'').toLowerCase().includes(q) ||
+    (d.course_name||'').toLowerCase().includes(q)
+  ) : data;
+  countBadge.textContent = filtered.length;
+  if(!filtered.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = filtered.map((d,i) => `
+    <tr>
+      <td style="color:#555;font-size:11px">${i+1}</td>
+      <td style="color:#fff;font-weight:600">${d.name||'—'}</td>
+      <td style="color:#888">${d.email||'—'}</td>
+      <td><span style="background:#212121;color:#aaa;padding:2px 8px;border-radius:2px;font-size:11px">${d.district||'—'}</span></td>
+      <td style="color:${d.gender==='Female'?'#CC0000':'#888'}">${d.gender||'—'}</td>
+      <td style="color:#aaa">${d.age||'—'}</td>
+      <td style="color:#aaa;max-width:140px">${d.course_name||'—'}</td>
+      <td style="color:#666;font-size:11px">${fmtDate(d.completed_at)}</td>
+      <td>${d.certificate_url&&d.certificate_url!=='#'?`<a class="cert-link" href="${d.certificate_url}" target="_blank">View ↗</a>`:'<span style="color:#333;font-size:11px">—</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('search').addEventListener('input', function() {
+  renderTable(allData, this.value);
+});
+
+loadData();
+</script>
