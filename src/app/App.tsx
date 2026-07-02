@@ -24,7 +24,7 @@ type Participant = {
   user_id: string | null;
   user_email: string | null;
   district: string | null;
-  age: number | null;
+  age: string | null;
   gender: string | null;
   course_name: string | null;
   completed_at: string | null;
