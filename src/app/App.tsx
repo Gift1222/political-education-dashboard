@@ -24,7 +24,7 @@ type Participant = {
   user_id: string | null;
   user_email: string | null;
   district: string | null;
-  age: number | null;
+  age: string | null;
   gender: string | null;
   course_name: string | null;
   completed_at: string | null;
@@ -227,22 +227,24 @@ export default function App() {
   }, [participants]);
 
   const ageData = useMemo(() => {
-    const buckets = [
-      { label: "18-25", count: 0 },
-      { label: "26-35", count: 0 },
-      { label: "36-45", count: 0 },
-      { label: "46-55", count: 0 },
-      { label: "56+", count: 0 },
-    ];
+    // Fixed buckets matching the exact text values stored in the database
+    const RANGES = ["18-24", "25-30", "31-35"];
+    const counts: Record<string, number> = {};
+    RANGES.forEach((r) => (counts[r] = 0));
+
     participants.forEach((d) => {
-      const a = d.age;
-      if (a == null) return;
-      if (a <= 25) buckets[0].count++;
-      else if (a <= 35) buckets[1].count++;
-      else if (a <= 45) buckets[2].count++;
-      else if (a <= 55) buckets[3].count++;
-      else buckets[4].count++;
+      if (!d.age) return;
+      // Normalise separators: "18–24" (en-dash) → "18-24" (hyphen)
+      const normalised = d.age.replace(/–/g, "-").trim();
+      if (normalised in counts) {
+        counts[normalised]++;
+      } else {
+        // Fallback: bucket any unrecognised value under the closest range
+        counts[RANGES[RANGES.length - 1]]++;
+      }
     });
+
+    const buckets = RANGES.map((r) => ({ label: r, count: counts[r] }));
     const maxIdx = buckets.reduce(
       (mi, b, i, arr) => (b.count > arr[mi].count ? i : mi),
       0,
