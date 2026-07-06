@@ -24,7 +24,7 @@ type Participant = {
   user_id: string | null;
   user_email: string | null;
   district: string | null;
-  age: string | null;
+  age: number | null;
   gender: string | null;
   course_name: string | null;
   completed_at: string | null;
@@ -678,13 +678,13 @@ export default function App() {
                     {[
                       "#",
                       "User ID",
-                      "User Email",
+                      // "User Email",
                       "District",
                       "Gender",
                       "Age",
                       "Course",
                       "Completed",
-                      "Certificate",
+                      // "Certificate",
                     ].map((h) => (
                       <th
                         key={h}
@@ -719,9 +719,9 @@ export default function App() {
                       <td className="px-3.5 py-3 font-semibold text-foreground whitespace-nowrap">
                         {d.user_id || "—"}
                       </td>
-                      <td className="px-3.5 py-3 text-muted-foreground">
+                      {/* <td className="px-3.5 py-3 text-muted-foreground">
                         {d.user_email || "—"}
-                      </td>
+                      </td> */}
                       <td className="px-3.5 py-3">
                         <span className="bg-muted text-secondary-foreground px-2 py-0.5 rounded-sm text-[11px]">
                           {d.district || "—"}
@@ -760,7 +760,7 @@ export default function App() {
                       >
                         {fmtDate(d.completed_at)}
                       </td>
-                      <td className="px-3.5 py-3">
+                      {/* <td className="px-3.5 py-3">
                         {d.certificate_url &&
                         d.certificate_url !== "#" ? (
                           <a
@@ -776,7 +776,7 @@ export default function App() {
                             —
                           </span>
                         )}
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>
