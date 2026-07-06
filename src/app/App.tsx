@@ -18,7 +18,6 @@ import {
 } from "recharts";
 
 // Mirrors the public.course_completions table in Supabase.
-// Most columns are nullable there, so we type them as such here too.
 type Participant = {
   id: string;
   user_id: string | null;
@@ -32,11 +31,18 @@ type Participant = {
 };
 
 const RED = "#CC0000";
+const AGE_RANGES = ["18-24", "25-30", "31-35"];
+
 const GENDER_COLORS: Record<string, string> = {
   Female: "#CC0000",
   Male: "#ffffff",
   Other: "#888888",
 };
+
+function normaliseAge(raw: string | null): string {
+  if (!raw) return "";
+  return raw.replace(/–/g, "-").trim();
+}
 
 function fmtDate(s: string | null) {
   if (!s) return "—";
@@ -58,11 +64,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         borderRadius: 2,
       }}
     >
-      <p
-        style={{ color: "#888", fontSize: 11, marginBottom: 2 }}
-      >
-        {label}
-      </p>
+      <p style={{ color: "#888", fontSize: 11, marginBottom: 2 }}>{label}</p>
       <p
         style={{
           color: "#fff",
@@ -77,19 +79,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-function SectionLabel({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4">
       <span className="block w-0.5 h-3 bg-primary flex-shrink-0" />
       <span
-        style={{
-          fontFamily: "'Barlow Condensed', sans-serif",
-          letterSpacing: "0.2em",
-        }}
+        style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.2em" }}
         className="text-primary text-[10px] font-bold uppercase tracking-widest"
       >
         {children}
@@ -98,24 +93,13 @@ function SectionLabel({
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  sub: string;
-}) {
+function KpiCard({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
     <div className="bg-card border border-secondary rounded-sm overflow-hidden relative">
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-primary" />
       <div className="p-5">
         <p
-          style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            letterSpacing: "0.15em",
-          }}
+          style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.15em" }}
           className="text-[10px] text-muted-foreground uppercase font-semibold mb-2"
         >
           {label}
@@ -126,21 +110,13 @@ function KpiCard({
         >
           {value}
         </p>
-        <p className="text-[11px] text-primary font-semibold">
-          {sub}
-        </p>
+        <p className="text-[11px] text-primary font-semibold">{sub}</p>
       </div>
     </div>
   );
 }
 
-function ChartCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-card border border-secondary rounded-sm p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -157,11 +133,49 @@ function ChartCard({
   );
 }
 
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label
+        style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.15em" }}
+        className="text-[9px] text-muted-foreground uppercase font-semibold"
+      >
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-background border border-secondary text-foreground text-[12px] px-3 py-1.5 rounded-sm outline-none focus:border-primary transition-colors cursor-pointer"
+        style={{ fontFamily: "'Barlow', sans-serif", minWidth: 130 }}
+      >
+        <option value="">All</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function App() {
   const [search, setSearch] = useState("");
-  const [participants, setParticipants] = useState<Participant[]>(
-    [],
-  );
+  const [filterGender, setFilterGender] = useState("");
+  const [filterAge, setFilterAge] = useState("");
+  const [filterDistrict, setFilterDistrict] = useState("");
+
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,9 +187,7 @@ export default function App() {
       setError(null);
       const { data, error } = await supabase
         .from("course_completions")
-        .select(
-          "id, user_id, user_email, district, age, gender, course_name, completed_at, certificate_url",
-        )
+        .select("id, user_id, user_email, district, age, gender, course_name, completed_at, certificate_url")
         .order("completed_at", { ascending: true });
 
       if (cancelled) return;
@@ -191,13 +203,10 @@ export default function App() {
 
     loadCompletions();
 
-    // Keep the dashboard live: refresh whenever rows are added/changed.
     const channel = supabase
       .channel("course_completions_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "course_completions" },
-        () => loadCompletions(),
+      .on("postgres_changes", { event: "*", schema: "public", table: "course_completions" }, () =>
+        loadCompletions(),
       )
       .subscribe();
 
@@ -207,9 +216,43 @@ export default function App() {
     };
   }, []);
 
+  // ── Unique values for filter dropdowns (from raw data) ──────────────────
+  const uniqueGenders = useMemo(
+    () => [...new Set(participants.map((d) => d.gender).filter(Boolean) as string[])].sort(),
+    [participants],
+  );
+  const uniqueDistricts = useMemo(
+    () => [...new Set(participants.map((d) => d.district).filter(Boolean) as string[])].sort(),
+    [participants],
+  );
+
+  // ── Master filtered dataset — drives ALL charts + KPIs + table ───────────
+  const filteredParticipants = useMemo(() => {
+    return participants.filter((d) => {
+      if (filterGender && d.gender !== filterGender) return false;
+      if (filterAge && normaliseAge(d.age) !== filterAge) return false;
+      if (filterDistrict && d.district !== filterDistrict) return false;
+      return true;
+    });
+  }, [participants, filterGender, filterAge, filterDistrict]);
+
+  // ── Table also applies the search box on top of the master filter ────────
+  const tableRows = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return filteredParticipants;
+    return filteredParticipants.filter(
+      (d) =>
+        (d.user_id ?? "").toLowerCase().includes(q) ||
+        (d.user_email ?? "").toLowerCase().includes(q) ||
+        (d.district ?? "").toLowerCase().includes(q) ||
+        (d.course_name ?? "").toLowerCase().includes(q),
+    );
+  }, [search, filteredParticipants]);
+
+  // ── Charts all derived from filteredParticipants ─────────────────────────
   const trendData = useMemo(() => {
     const monthly: Record<string, number> = {};
-    participants.forEach((d) => {
+    filteredParticipants.forEach((d) => {
       if (!d.completed_at) return;
       const m = d.completed_at.substring(0, 7);
       monthly[m] = (monthly[m] || 0) + 1;
@@ -218,107 +261,85 @@ export default function App() {
       .sort()
       .map(([m, count]) => {
         const [y, mo] = m.split("-");
-        const label = new Date(+y, +mo - 1, 1).toLocaleString(
-          "en",
-          { month: "short", year: "2-digit" },
-        );
+        const label = new Date(+y, +mo - 1, 1).toLocaleString("en", {
+          month: "short",
+          year: "2-digit",
+        });
         return { label, count };
       });
-  }, [participants]);
+  }, [filteredParticipants]);
 
   const ageData = useMemo(() => {
-    // Fixed buckets matching the exact text values stored in the database
-    const RANGES = ["18-24", "25-30", "31-35"];
     const counts: Record<string, number> = {};
-    RANGES.forEach((r) => (counts[r] = 0));
+    AGE_RANGES.forEach((r) => (counts[r] = 0));
 
-    participants.forEach((d) => {
-      if (!d.age) return;
-      // Normalise separators: "18–24" (en-dash) → "18-24" (hyphen)
-      const normalised = d.age.replace(/–/g, "-").trim();
-      if (normalised in counts) {
-        counts[normalised]++;
-      } else {
-        // Fallback: bucket any unrecognised value under the closest range
-        counts[RANGES[RANGES.length - 1]]++;
-      }
+    filteredParticipants.forEach((d) => {
+      const norm = normaliseAge(d.age);
+      if (norm in counts) counts[norm]++;
+      else if (norm) counts[AGE_RANGES[AGE_RANGES.length - 1]]++;
     });
 
-    const buckets = RANGES.map((r) => ({ label: r, count: counts[r] }));
+    const buckets = AGE_RANGES.map((r) => ({ label: r, count: counts[r] }));
     const maxIdx = buckets.reduce(
       (mi, b, i, arr) => (b.count > arr[mi].count ? i : mi),
       0,
     );
-    return buckets.map((b, i) => ({
-      ...b,
-      fill: i === maxIdx ? RED : "#2A2A2A",
-    }));
-  }, [participants]);
+    return buckets.map((b, i) => ({ ...b, fill: i === maxIdx ? RED : "#2A2A2A" }));
+  }, [filteredParticipants]);
 
   const genderData = useMemo(() => {
     const counts: Record<string, number> = {};
-    participants.forEach((d) => {
+    filteredParticipants.forEach((d) => {
       const g = d.gender ?? "Unknown";
       counts[g] = (counts[g] || 0) + 1;
     });
-    return Object.entries(counts).map(([gender, count]) => ({
-      gender,
-      count,
-    }));
-  }, [participants]);
+    return Object.entries(counts).map(([gender, count]) => ({ gender, count }));
+  }, [filteredParticipants]);
 
+  // District chart — ALL districts, no slice, scrollable
   const districtData = useMemo(() => {
     const counts: Record<string, number> = {};
-    participants.forEach((d) => {
+    filteredParticipants.forEach((d) => {
       const dist = d.district ?? "Unknown";
       counts[dist] = (counts[dist] || 0) + 1;
     });
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 7)
       .map(([district, count]) => ({ district, count }));
-  }, [participants]);
+  }, [filteredParticipants]);
+
+  // Dynamic chart height: 36px per bar, minimum 220px
+  const districtChartHeight = Math.max(220, districtData.length * 36);
 
   const kpis = useMemo(() => {
-    const total = participants.length;
+    const total = filteredParticipants.length;
     const districts = new Set(
-      participants.map((d) => d.district).filter(Boolean),
+      filteredParticipants.map((d) => d.district).filter(Boolean),
     ).size;
     const topAge = ageData.reduce(
       (best, b) => (b.count > best.count ? b : best),
       ageData[0],
     );
-    const femaleCount = participants.filter(
-      (d) => d.gender === "Female",
-    ).length;
-    const femalePct =
-      total > 0 ? Math.round((femaleCount / total) * 100) : 0;
-    return {
-      total,
-      districts,
-      topAge: topAge?.label ?? "—",
-      femalePct,
-    };
-  }, [participants, ageData]);
+    const femaleCount = filteredParticipants.filter((d) => d.gender === "Female").length;
+    const femalePct = total > 0 ? Math.round((femaleCount / total) * 100) : 0;
+    return { total, districts, topAge: topAge?.label ?? "—", femalePct };
+  }, [filteredParticipants, ageData]);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    if (!q) return participants;
-    return participants.filter(
-      (d) =>
-        (d.user_id ?? "").toLowerCase().includes(q) ||
-        (d.user_email ?? "").toLowerCase().includes(q) ||
-        (d.district ?? "").toLowerCase().includes(q) ||
-        (d.course_name ?? "").toLowerCase().includes(q),
-    );
-  }, [search, participants]);
+  const hasFilters = filterGender || filterAge || filterDistrict;
+
+  function clearFilters() {
+    setFilterGender("");
+    setFilterAge("");
+    setFilterDistrict("");
+    setSearch("");
+  }
 
   return (
     <div
       className="min-h-screen bg-background text-foreground"
       style={{ fontFamily: "'Barlow', sans-serif" }}
     >
-      {/* Header */}
+      {/* ── Header ── */}
       <header className="bg-background border-b-[3px] border-primary px-7 py-[18px] flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <ImageWithFallback
@@ -328,10 +349,7 @@ export default function App() {
           />
           <div>
             <p
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                letterSpacing: "0.2em",
-              }}
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.2em" }}
               className="text-[10px] text-muted-foreground uppercase font-semibold"
             >
               Training Management System
@@ -345,96 +363,94 @@ export default function App() {
           </div>
         </div>
         <div
-          style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            letterSpacing: "0.12em",
-          }}
+          style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.12em" }}
           className="bg-primary text-white text-[11px] font-bold px-3 py-1.5 rounded-sm uppercase"
         >
           Live Tracking
         </div>
       </header>
 
-      {/* Main content */}
+      {/* ── Filter Bar ── */}
+      <div className="bg-card border-b border-secondary px-7 py-3.5 flex items-end gap-4 flex-wrap">
+        <FilterSelect
+          label="Gender"
+          value={filterGender}
+          onChange={setFilterGender}
+          options={uniqueGenders}
+        />
+        <FilterSelect
+          label="Age Range"
+          value={filterAge}
+          onChange={setFilterAge}
+          options={AGE_RANGES}
+        />
+        <FilterSelect
+          label="District"
+          value={filterDistrict}
+          onChange={setFilterDistrict}
+          options={uniqueDistricts}
+        />
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-[11px] text-primary border border-primary px-3 py-1.5 rounded-sm hover:bg-primary hover:text-white transition-colors"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.1em", marginBottom: 1 }}
+          >
+            Clear Filters ✕
+          </button>
+        )}
+        {hasFilters && (
+          <span
+            className="text-[11px] text-muted-foreground self-end pb-2"
+            style={{ fontFamily: "'JetBrains Mono', monospace" }}
+          >
+            Showing {filteredParticipants.length} of {participants.length} records
+          </span>
+        )}
+      </div>
+
+      {/* ── Main content ── */}
       <main className="px-7 py-7 max-w-[1600px] mx-auto">
         {error && (
           <div className="mb-6 bg-card border border-primary rounded-sm px-5 py-4 text-[13px] text-primary">
             Couldn't load data from Supabase: {error}
           </div>
         )}
-
         {loading && !error && (
           <div className="mb-6 bg-card border border-secondary rounded-sm px-5 py-4 text-[13px] text-muted-foreground">
             Loading completions…
           </div>
         )}
-
         {!loading && !error && participants.length === 0 && (
           <div className="mb-6 bg-card border border-secondary rounded-sm px-5 py-4 text-[13px] text-muted-foreground">
             No completions found yet in course_completions.
           </div>
         )}
 
-        {/* KPIs */}
+        {/* ── KPIs ── */}
         <SectionLabel>Key Performance Indicators</SectionLabel>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-8">
-          <KpiCard
-            label="Total Completed"
-            value={kpis.total}
-            sub="participants"
-          />
-          <KpiCard
-            label="Districts Reached"
-            value={kpis.districts}
-            sub="unique districts"
-          />
-          <KpiCard
-            label="Largest Age Group"
-            value={kpis.topAge}
-            sub="years old"
-          />
-          <KpiCard
-            label="Gender Balance"
-            value={`${kpis.femalePct}%`}
-            sub="female participants"
-          />
+          <KpiCard label="Total Completed" value={kpis.total} sub="participants" />
+          <KpiCard label="Districts Reached" value={kpis.districts} sub="unique districts" />
+          <KpiCard label="Largest Age Group" value={kpis.topAge} sub="years old" />
+          <KpiCard label="Gender Balance" value={`${kpis.femalePct}%`} sub="female participants" />
         </div>
 
-        {/* Trend Analysis */}
+        {/* ── Trend + Gender ── */}
         <SectionLabel>Trend Analysis</SectionLabel>
         <div className="grid grid-cols-1 md:grid-cols-[1.7fr_1fr] gap-3.5 mb-3.5">
-          {/* Line chart */}
           <ChartCard title="Completions Over Time">
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart
-                data={trendData}
-                margin={{
-                  top: 4,
-                  right: 8,
-                  left: -20,
-                  bottom: 0,
-                }}
-              >
-                <CartesianGrid
-                  stroke="#1E1E1E"
-                  strokeDasharray="0"
-                />
+              <LineChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" />
                 <XAxis
                   dataKey="label"
-                  tick={{
-                    fill: "#666",
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
+                  tick={{ fill: "#666", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#2A2A2A" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{
-                    fill: "#666",
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
+                  tick={{ fill: "#666", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#2A2A2A" }}
                   tickLine={false}
                   allowDecimals={false}
@@ -446,18 +462,12 @@ export default function App() {
                   stroke={RED}
                   strokeWidth={2.5}
                   dot={{ fill: RED, r: 4, strokeWidth: 0 }}
-                  activeDot={{
-                    r: 6,
-                    fill: RED,
-                    stroke: "#0D0D0D",
-                    strokeWidth: 2,
-                  }}
+                  activeDot={{ r: 6, fill: RED, stroke: "#0D0D0D", strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* Gender donut */}
           <ChartCard title="Gender Distribution">
             <div className="flex flex-col">
               <ResponsiveContainer width="100%" height={140}>
@@ -474,25 +484,12 @@ export default function App() {
                     stroke="none"
                   >
                     {genderData.map((entry) => (
-                      <Cell
-                        key={entry.gender}
-                        fill={
-                          GENDER_COLORS[entry.gender] ?? "#888"
-                        }
-                      />
+                      <Cell key={entry.gender} fill={GENDER_COLORS[entry.gender] ?? "#888"} />
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{
-                      background: "#1A1A1A",
-                      border: "1px solid #2A2A2A",
-                      borderRadius: 2,
-                    }}
-                    itemStyle={{
-                      color: "#fff",
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 12,
-                    }}
+                    contentStyle={{ background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 2 }}
+                    itemStyle={{ color: "#fff", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}
                     labelStyle={{ color: "#888", fontSize: 11 }}
                   />
                 </PieChart>
@@ -500,32 +497,19 @@ export default function App() {
               <div className="flex flex-col gap-2.5 mt-1">
                 {genderData.map((g) => {
                   const pct = Math.round(
-                    participants.length > 0
-                      ? (g.count / participants.length) * 100
-                      : 0,
+                    filteredParticipants.length > 0 ? (g.count / filteredParticipants.length) * 100 : 0,
                   );
                   return (
-                    <div
-                      key={g.gender}
-                      className="flex items-center justify-between"
-                    >
+                    <div key={g.gender} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span
                           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{
-                            background:
-                              GENDER_COLORS[g.gender] ?? "#888",
-                          }}
+                          style={{ background: GENDER_COLORS[g.gender] ?? "#888" }}
                         />
-                        <span className="text-[12px] text-secondary-foreground">
-                          {g.gender}
-                        </span>
+                        <span className="text-[12px] text-secondary-foreground">{g.gender}</span>
                       </div>
                       <span
-                        style={{
-                          fontFamily:
-                            "'JetBrains Mono', monospace",
-                        }}
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
                         className="text-[14px] font-bold text-foreground"
                       >
                         {pct}%
@@ -538,40 +522,20 @@ export default function App() {
           </ChartCard>
         </div>
 
-        {/* Age + District */}
+        {/* ── Age + District ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-8">
           <ChartCard title="Age Range Distribution">
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart
-                data={ageData}
-                margin={{
-                  top: 4,
-                  right: 8,
-                  left: -20,
-                  bottom: 0,
-                }}
-              >
-                <CartesianGrid
-                  stroke="#1E1E1E"
-                  strokeDasharray="0"
-                  vertical={false}
-                />
+              <BarChart data={ageData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{
-                    fill: "#666",
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
+                  tick={{ fill: "#666", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#2A2A2A" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{
-                    fill: "#666",
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
+                  tick={{ fill: "#666", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#2A2A2A" }}
                   tickLine={false}
                   allowDecimals={false}
@@ -586,58 +550,45 @@ export default function App() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Completions by District">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart
-                data={districtData}
-                layout="vertical"
-                margin={{
-                  top: 4,
-                  right: 8,
-                  left: 8,
-                  bottom: 0,
-                }}
-              >
-                <CartesianGrid
-                  stroke="#1E1E1E"
-                  strokeDasharray="0"
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  tick={{
-                    fill: "#666",
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  axisLine={{ stroke: "#2A2A2A" }}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="district"
-                  tick={{
-                    fill: "#888",
-                    fontSize: 11,
-                    fontFamily: "'Barlow', sans-serif",
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={72}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  dataKey="count"
-                  fill={RED}
-                  radius={[0, 2, 2, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* ── District chart: scrollable, all districts, dynamic height ── */}
+          <ChartCard title={`Completions by District (${districtData.length})`}>
+            <div
+              style={{ overflowY: "auto", maxHeight: 280 }}
+              className="pr-1"
+            >
+              <div style={{ height: districtChartHeight, minWidth: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={districtData}
+                    layout="vertical"
+                    margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid stroke="#1E1E1E" strokeDasharray="0" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: "#666", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
+                      axisLine={{ stroke: "#2A2A2A" }}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="district"
+                      tick={{ fill: "#888", fontSize: 11, fontFamily: "'Barlow', sans-serif" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={80}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" fill={RED} radius={[0, 2, 2, 0]} label={{ position: "right", fill: "#555", fontSize: 11 }} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </ChartCard>
         </div>
 
-        {/* Participant Table */}
+        {/* ── Participant Table ── */}
         <SectionLabel>Participant Records</SectionLabel>
         <div className="bg-card border border-secondary rounded-sm overflow-hidden">
           <div className="px-5 py-4 flex items-center justify-between border-b border-secondary">
@@ -650,26 +601,24 @@ export default function App() {
                 All Completions
               </h3>
               <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
                 className="bg-secondary text-muted-foreground text-[11px] px-2.5 py-0.5 rounded-full"
               >
-                {filtered.length}
+                {tableRows.length}
               </span>
             </div>
             <input
               className="bg-background border border-secondary text-foreground placeholder-muted-foreground text-[12px] px-3.5 py-1.5 rounded-sm w-48 outline-none focus:border-primary transition-colors"
               style={{ fontFamily: "'Barlow', sans-serif" }}
               type="text"
-              placeholder="Search user ID, email, district…"
+              placeholder="Search name, district…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
           <div className="overflow-x-auto">
-            {filtered.length === 0 ? (
+            {tableRows.length === 0 ? (
               <div className="py-10 text-center text-muted-foreground text-[13px]">
                 No participants match your search.
               </div>
@@ -691,11 +640,7 @@ export default function App() {
                       <th
                         key={h}
                         className="px-3.5 py-2.5 text-left border-b border-secondary text-[10px] text-muted-foreground uppercase font-semibold"
-                        style={{
-                          letterSpacing: "0.12em",
-                          fontFamily:
-                            "'Barlow Condensed', sans-serif",
-                        }}
+                        style={{ letterSpacing: "0.12em", fontFamily: "'Barlow Condensed', sans-serif" }}
                       >
                         {h}
                       </th>
@@ -703,18 +648,14 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((d, i) => (
+                  {tableRows.map((d, i) => (
                     <tr
                       key={d.id}
                       className="border-b border-[#1E1E1E] hover:bg-muted transition-colors cursor-default"
                     >
                       <td
                         className="px-3.5 py-3 text-muted-foreground"
-                        style={{
-                          fontFamily:
-                            "'JetBrains Mono', monospace",
-                          fontSize: 11,
-                        }}
+                        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}
                       >
                         {i + 1}
                       </td>
@@ -731,21 +672,13 @@ export default function App() {
                       </td>
                       <td
                         className="px-3.5 py-3 font-medium"
-                        style={{
-                          color:
-                            d.gender === "Female"
-                              ? RED
-                              : "#888",
-                        }}
+                        style={{ color: d.gender === "Female" ? RED : "#888" }}
                       >
                         {d.gender || "—"}
                       </td>
                       <td
                         className="px-3.5 py-3 text-secondary-foreground"
-                        style={{
-                          fontFamily:
-                            "'JetBrains Mono', monospace",
-                        }}
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
                       >
                         {d.age || "—"}
                       </td>
@@ -754,17 +687,12 @@ export default function App() {
                       </td>
                       <td
                         className="px-3.5 py-3 text-muted-foreground whitespace-nowrap"
-                        style={{
-                          fontFamily:
-                            "'JetBrains Mono', monospace",
-                          fontSize: 11,
-                        }}
+                        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}
                       >
                         {fmtDate(d.completed_at)}
                       </td>
                       {/* <td className="px-3.5 py-3">
-                        {d.certificate_url &&
-                        d.certificate_url !== "#" ? (
+                        {d.certificate_url && d.certificate_url !== "#" ? (
                           <a
                             href={d.certificate_url}
                             target="_blank"
@@ -774,9 +702,7 @@ export default function App() {
                             View ↗
                           </a>
                         ) : (
-                          <span className="text-[#333] text-[11px]">
-                            —
-                          </span>
+                          <span className="text-[#333] text-[11px]">—</span>
                         )}
                       </td> */}
                     </tr>
